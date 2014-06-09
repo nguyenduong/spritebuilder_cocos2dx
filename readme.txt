@@ -24,7 +24,7 @@ III. Android:
 
 Please let me know if you have any problem.
 
-Gook luck!
+Good luck!
 
 Thanks,
 
