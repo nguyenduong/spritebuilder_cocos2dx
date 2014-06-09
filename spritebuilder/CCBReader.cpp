@@ -910,15 +910,17 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
         unsigned char r = readByte();
         unsigned char g = readByte();
         unsigned char b = readByte();
+        unsigned char a = readByte();
         
         ValueMap colorMap;
         colorMap["r"] = r;
         colorMap["g"] = g;
         colorMap["b"] = b;
+        colorMap["a"] = a;
         
         value = colorMap;
     }
-    else if (type == PropertyType::DEGREES)
+    else if (type == PropertyType::DEGREES || type == PropertyType::FLOAT)
     {
         value = readFloat();
     }
@@ -936,34 +938,37 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
     }
     else if (type == PropertyType::SPRITEFRAME)
     {
-        std::string spriteSheet = readCachedString();
         std::string spriteFile = readCachedString();
+        //std::string spriteSheet = readCachedString();
         
         SpriteFrame* spriteFrame;
-
-        if (spriteSheet.length() == 0)
+        
+        //if (spriteSheet.length() == 0)
         {
             spriteFile = _CCBRootPath + spriteFile;
-
+            
             Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(spriteFile.c_str());
             Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
             
             spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
         }
-        else
-        {
-            spriteSheet = _CCBRootPath + spriteSheet;
-            SpriteFrameCache* frameCache = SpriteFrameCache::getInstance();
-            
-            // Load the sprite sheet only if it is not loaded            
-            if (_loadedSpriteSheets.find(spriteSheet) == _loadedSpriteSheets.end())
-            {
-                frameCache->addSpriteFramesWithFile(spriteSheet.c_str());
-                _loadedSpriteSheets.insert(spriteSheet);
-            }
-            
-            spriteFrame = frameCache->getSpriteFrameByName(spriteFile.c_str());
-        }
+        /*
+         else
+         {
+         spriteSheet = _CCBRootPath + spriteSheet;
+         SpriteFrameCache* frameCache = SpriteFrameCache::getInstance();
+         
+         // Load the sprite sheet only if it is not loaded
+         if (_loadedSpriteSheets.find(spriteSheet) == _loadedSpriteSheets.end())
+         {
+         frameCache->addSpriteFramesWithFile(spriteSheet.c_str());
+         _loadedSpriteSheets.insert(spriteSheet);
+         }
+         
+         spriteFrame = frameCache->getSpriteFrameByName(spriteFile.c_str());
+         }
+         */
+
         
         keyframe->setObject(spriteFrame);
     }
