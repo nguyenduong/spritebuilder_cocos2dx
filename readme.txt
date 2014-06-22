@@ -1,4 +1,4 @@
-This library support for cocos2d-x 3.x
+This library support for cocos2d-x 3.x and SpriteBuilder 1.1
 
 You can pull from git hub: https://github.com/nguyenduong
 or my home page: www.jacos2d-x.org
