@@ -6,7 +6,6 @@
 #include "CCNode+CCBRelativePositioning.h"
 #include <string>
 #include <set>
-#include <sstream>
 #include "SimpleAudioEngine.h"
 #include "CCBSelectorResolver.h"
 
@@ -513,7 +512,9 @@ void CCBAnimationManager::setAnimatedProperty(const std::string& propName, Node 
                 unsigned char r = c["r"].asByte();
                 unsigned char g = c["g"].asByte();
                 unsigned char b = c["b"].asByte();
+                //unsigned char a = c["a"].asByte();
                 pNode->setColor(Color3B(r, g, b));
+
             }
             else if (propName == "visible")
             {

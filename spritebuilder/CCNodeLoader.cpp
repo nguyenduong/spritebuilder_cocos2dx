@@ -40,13 +40,13 @@ Node * NodeLoader::loadNode(Node * pParent, CCBReader * ccbReader)
 
 void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbReader)
 {
-    int numRegularProps = ccbReader->readInt(false);
-    int numExturaProps = ccbReader->readInt(false);
+    int numRegularProps = ccbReader->readIntWithSign(false);
+    int numExturaProps = ccbReader->readIntWithSign(false);
     int propertyCount = numRegularProps + numExturaProps;
 
     for(int i = 0; i < propertyCount; i++) {
         bool isExtraProp = (i >= numRegularProps);
-        CCBReader::PropertyType type = (CCBReader::PropertyType)ccbReader->readInt(false);
+        CCBReader::PropertyType type = (CCBReader::PropertyType)ccbReader->readIntWithSign(false);
         std::string propertyName = ccbReader->readCachedString();
 
         // Check if the property can be set for this platform
@@ -137,7 +137,7 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
             extraPropsNames->addObject(String::create(propertyName));
         }
 
-        switch(type) 
+        switch(type)
         {
             case CCBReader::PropertyType::POSITION:
             {
@@ -417,7 +417,7 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
             }
             case CCBReader::PropertyType::NODE_REFERENCE:
             {
-                int uuid = ccbReader->readInt(false);
+                int uuid = ccbReader->readIntWithSign(false);
                 //DuongNT: not implement
 //                CCNode * mappedNode = nodeMapping[@(uuid)];
 //                NSAssert(mappedNode != nil, @"CCBReader: Failed to find node UUID:%i", uuid);
@@ -631,7 +631,7 @@ float NodeLoader::parsePropTypeFloatScale(Node * pNode, Node * pParent, CCBReade
 {
     float f = ccbReader->readFloat();
 
-    CCBReader::ScaleType type = static_cast<CCBReader::ScaleType>(ccbReader->readInt(false));
+    CCBReader::ScaleType type = static_cast<CCBReader::ScaleType>(ccbReader->readIntWithSign(false));
     
     if(type == CCBReader::ScaleType::MULTIPLY_RESOLUTION) 
     {
@@ -643,12 +643,12 @@ float NodeLoader::parsePropTypeFloatScale(Node * pNode, Node * pParent, CCBReade
 
 int NodeLoader::parsePropTypeInteger(Node * pNode, Node * pParent, CCBReader * ccbReader) 
 {
-    return ccbReader->readInt(true);
+    return ccbReader->readIntWithSign(true);
 }
 
 int NodeLoader::parsePropTypeIntegerLabeled(Node * pNode, Node * pParent, CCBReader * ccbReader) 
 {
-    return ccbReader->readInt(true);
+    return ccbReader->readIntWithSign(true);
 }
 
 float * NodeLoader::parsePropTypeFloatVar(Node * pNode, Node * pParent, CCBReader * ccbReader) 
@@ -861,8 +861,8 @@ bool * NodeLoader::parsePropTypeFlip(Node * pNode, Node * pParent, CCBReader * c
 
 BlendFunc NodeLoader::parsePropTypeBlendFunc(Node * pNode, Node * pParent, CCBReader * ccbReader) 
 {
-    int source = ccbReader->readInt(false);
-    int destination = ccbReader->readInt(false);
+    int source = ccbReader->readIntWithSign(false);
+    int destination = ccbReader->readIntWithSign(false);
     
     BlendFunc blendFunc;
     blendFunc.src = source;
@@ -913,7 +913,7 @@ std::string NodeLoader::parsePropTypeFontTTF(Node * pNode, Node * pParent, CCBRe
 BlockData * NodeLoader::parsePropTypeBlock(Node * pNode, Node * pParent, CCBReader * ccbReader)
 {
     std::string selectorName = ccbReader->readCachedString();
-    CCBReader::TargetType selectorTarget = static_cast<CCBReader::TargetType>(ccbReader->readInt(false));
+    CCBReader::TargetType selectorTarget = static_cast<CCBReader::TargetType>(ccbReader->readIntWithSign(false));
 
     if(selectorTarget != CCBReader::TargetType::NONE)
     {
@@ -993,8 +993,8 @@ BlockData * NodeLoader::parsePropTypeBlock(Node * pNode, Node * pParent, CCBRead
 BlockControlData * NodeLoader::parsePropTypeBlockControl(Node * pNode, Node * pParent, CCBReader * ccbReader)
 {
     std::string selectorName = ccbReader->readCachedString();
-    CCBReader::TargetType selectorTarget = static_cast<CCBReader::TargetType>(ccbReader->readInt(false));
-    //int controlEvents = ccbReader->readInt(false);
+    CCBReader::TargetType selectorTarget = static_cast<CCBReader::TargetType>(ccbReader->readIntWithSign(false));
+    //int controlEvents = ccbReader->readIntWithSign(false);
 
     if(selectorTarget != CCBReader::TargetType::NONE)
     {

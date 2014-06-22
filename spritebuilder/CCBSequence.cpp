@@ -43,6 +43,7 @@ void CCBSequence::setName(const char *pName)
 int CCBSequence::getSequenceId()
 {
     return mSequenceId;
+    
 }
 
 void CCBSequence::setSequenceId(int nSequenceId)

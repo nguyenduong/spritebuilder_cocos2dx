@@ -29,7 +29,7 @@
     return NULL; \
 }
 
-#define CCB_VERSION 6
+#define CCB_VERSION 10
 
 #define DEFAULT_PTM_RATIO 32.0f
 
@@ -372,6 +372,8 @@ public:
 
     static void setupSpriteBuilder(const char* resourcePath, float ptmRatio = DEFAULT_PTM_RATIO);
     static float getPTMRatio();
+    void setNodeRef(int uuid, cocos2d::Node* node);
+    cocos2d::Node* getNodeByRef(int uuid);
 private:
     void cleanUpNodeGraph(cocos2d::Node *pNode);
     bool readSequences();
@@ -382,14 +384,18 @@ private:
     //void readStringCacheEntry();
     cocos2d::Node* readNodeGraph();
     cocos2d::Node* readNodeGraph(cocos2d::Node * pParent);
-
+    void readJoints();
+    void readJoint();
+    void parseProperties(cocos2d::ValueMap& map);
     bool getBit();
     void alignBits();
 
     bool init();
-    
+    inline int readIntWithSign(bool pSigned);
     friend class NodeLoader;
-
+    
+    void readPropertyPosition(const std::string& propertyName, cocos2d::ValueMap& map);
+    
 private:
     std::shared_ptr<cocos2d::Data> _data;
     unsigned char *_bytes;
@@ -423,6 +429,7 @@ private:
     static float _ptmRatio;
     
     bool _jsControlled;
+    std::map<int, cocos2d::Node*>    m_oNodeMap;
     
 };
 

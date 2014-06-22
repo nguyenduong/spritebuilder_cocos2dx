@@ -16,10 +16,8 @@
 #include "CCBAnimationManager.h"
 #include "CCBSequenceProperty.h"
 #include "CCBKeyframe.h"
-#include "chipmunk.h"
-#include "CCPhysicsHelper_chipmunk.h"
-#include "CCBPhysicsBody.h"
-
+#include "CCBPhysicsJoints.h"
+#include "CCNode+CCBRelativePositioning.h"
 
 
 using namespace std;
@@ -366,7 +364,8 @@ Node* CCBReader::readFileWithCleanUp(bool bCleanUp, CCBAnimationManagerMapPtr am
     setAnimationManagers(am);
 
     Node *pNode = readNodeGraph(nullptr);
-
+    //read joints
+    readJoints();
     _animationManagers->insert(pNode, _animationManager);
 
     if (bCleanUp)
@@ -376,9 +375,402 @@ Node* CCBReader::readFileWithCleanUp(bool bCleanUp, CCBAnimationManagerMapPtr am
     
     return pNode;
 }
+ 
+void CCBReader::readJoints() {
+    int numJoints = readIntWithSign(false);
+    
+    for (int i = 0; i < numJoints; i++) {
+        readJoint();
+    }
+}
+ 
+void CCBReader::readPropertyPosition(const std::string& propertyName, cocos2d::ValueMap& map) {
+    float x = this->readFloat();
+    float y = this->readFloat();
+    
+    CCBReader::PositionType corner = static_cast<CCBReader::PositionType>(this->readByte());
+    CCBReader::PositionUnit xUnit = static_cast<CCBReader::PositionUnit>(this->readByte());
+    CCBReader::PositionUnit yUnit = static_cast<CCBReader::PositionUnit>(this->readByte());
+    
+    
+    //Size containerSize = this->getAnimationManager()->getContainerSize(pParent);
+    
+    Size containerSize(0, 0);
+    ValueMap::iterator it = map.find("contentSize");
+    if (it != map.end()) {
+        ValueMap& contentSizeMap = map["contentSize"].asValueMap();
+        containerSize.setSize(contentSizeMap["x"].asFloat(), contentSizeMap["y"].asFloat());
+    }
+
+    Point pt = getAbsolutePosition(Point(x,y), corner, xUnit, yUnit, containerSize, "");
+    
+    map[propertyName].asValueMap()["x"] = pt.x;
+    map[propertyName].asValueMap()["y"] = pt.y;
+
+}
+    
+void CCBReader::parseProperties(cocos2d::ValueMap& map) {
+    PropertyType type = (PropertyType)(readIntWithSign(false));
+    std::string propertyName = readCachedString();
+    if (propertyName == "motorMaxForceEnabled") {
+        propertyName = "motorMaxForceEnabled";
+    }
+    switch (type) {
+        case PropertyType::POSITION:
+            readPropertyPosition(propertyName, map);
+            break;
+        case PropertyType::SIZE:
+            break;
+        case PropertyType::POINT: {
+            map[propertyName].asValueMap()["x"] = readFloat();
+            map[propertyName].asValueMap()["y"] = readFloat();
+        }
+            break;
+        case PropertyType::POINT_LOCK:
+            break;
+        case PropertyType::SCALE_LOCK:
+            break;
+        case PropertyType::DEGREES:
+            break;
+        case PropertyType::INTEGER:
+            break;
+        case PropertyType::FLOAT:
+            map[propertyName] = readFloat();
+            break;
+        case PropertyType::FLOAT_VAR:
+            break;
+        case PropertyType::CHECK:
+            map[propertyName] = readBool();
+            break;
+        case PropertyType::SPRITEFRAME:
+            break;
+        case PropertyType::TEXTURE:
+            break;
+        case PropertyType::BYTE:
+            break;
+        case PropertyType::COLOR3:
+            break;
+        case PropertyType::COLOR4F_VAR:
+            break;
+        case PropertyType::FLIP:
+            break;
+        case PropertyType::BLEND_MODE:
+            break;
+        case PropertyType::FNT_FILE:
+            break;
+        case PropertyType::TEXT:
+            break;
+        case PropertyType::FONT_TTF:
+            break;
+        case PropertyType::INTEGER_LABELED:
+            break;
+        case PropertyType::BLOCK:
+            break;
+        case PropertyType::ANIMATION:
+            break;
+        case PropertyType::CCB_FILE:
+            break;
+        case PropertyType::STRING:
+            break;
+        case PropertyType::BLOCK_CONTROL:
+            break;
+        case PropertyType::FLOAT_SCALE:
+            break;
+        case PropertyType::FLOAT_XY:
+            break;
+        case PropertyType::COLOR4:
+            break;
+        case PropertyType::NODE_REFERENCE:
+        {
+            map[propertyName] = readIntWithSign(false);
+        }
+            break;
+        case PropertyType::FLOAT_CHECK:
+        {
+            float f = readFloat();
+            bool enabled = readBool();
+            map[propertyName + "Enabled"] = enabled;
+            if (enabled) {
+                map[propertyName] = f;
+            }
+            
+           // printf("%sEnabled\n", propertyName.c_str());
+        }
+            break;
+
+    }
+}
+
+    
+static void BreakConstraint(cpConstraint *constraint, cpSpace *space)
+{
+    PhysicsJoint* joint = (PhysicsJoint*)constraint->data;
+    ExternalJointsInfo* externalJoint = dynamic_cast<ExternalJointsInfo*>(joint);
+    //printf("breaking Force: %f\n", cpConstraintGetImpulse(constraint)/cpSpaceGetCurrentTimeStep(space));
+    //printf("breaking Force: %f\n", externalJoint->getBreakingForce());
+    if (externalJoint && abs(cpConstraintGetImpulse(constraint)/cpSpaceGetCurrentTimeStep(space)) > externalJoint->getBreakingForce()) {
+        joint->removeFormWorld();
+    }
+}
+    
+void CCBReader::readJoint() {
+    PhysicsJoint * joint = NULL;
+    
+    std::string className = readCachedString();
+    
+    int propertyCount = readIntWithSign(false);
+    
+    ValueMap properties;
+    for (int i = 0; i < propertyCount; i++)
+    {
+        parseProperties(properties);
+    }
+    
+    Node * nodeBodyA = getNodeByRef(properties["bodyA"].asInt());
+    Node * nodeBodyB = getNodeByRef(properties["bodyB"].asInt());
+    
+    Point offsetA(-nodeBodyA->getAnchorPoint().x * nodeBodyA->getContentSize().width, -nodeBodyA->getAnchorPoint().y * nodeBodyA->getContentSize().height);
+
+
+    Point offsetB(-nodeBodyB->getAnchorPoint().x * nodeBodyB->getContentSize().width, -nodeBodyB->getAnchorPoint().y * nodeBodyB->getContentSize().height);
+    
+    float breakingForce = properties["breakingForceEnabled"].asBool()? properties["breakingForce"].asFloat() : INFINITY;
+    
+    float maxForce = properties["maxForceEnabled"].asBool()? properties["maxForce"].asFloat() : INFINITY;
+    bool  collideBodies = properties["collideBodies"].asBool();
+    float referenceAngle = properties["referenceAngle"].asFloat();
+    referenceAngle = CC_DEGREES_TO_RADIANS(referenceAngle);
+
+    
+    if(className == "CCPhysicsPivotJoint")
+    {
+        ValueMap::iterator it2 = properties.find("motorEnabled");
+        if(it2 != properties.end() && it2->second.asBool())
+        {
+            ValueMap::iterator it = properties.find("motorRate");
+            float motorRate = it != properties.end() ? it->second.asFloat() : 1.0f;
+      
+            
+
+            CCBPhysicsJointMotor* motorJoint = CCBPhysicsJointMotor::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), motorRate);
+        
+            it = properties.find("motorMaxForceEnabled");
+            bool testVal = it->second.asBool();
+            float maxMotorForce = (it != properties.end() && it->second.asBool()) ? properties["motorMaxForce"].asFloat() : INFINITY;
+        
+            motorJoint->setMaxForce(maxMotorForce);
+            motorJoint->setCollisionEnable(collideBodies);
+            motorJoint->setBreakingForce(breakingForce);
+            nodeBodyA->getPhysicsBody()->getWorld()->addJoint(motorJoint);
+        }
+        
+        it2 = properties.find("dampedSpringEnabled");
+        if (it2 != properties.end() && it2->second.asBool()) {
+            
+            ValueMap::iterator it = properties.find("dampedSpringRestAngle");
+            
+            float   restAngle = it != properties.end() ? it->second.asFloat() : 0.0f;
+            restAngle = CC_DEGREES_TO_RADIANS(restAngle);
+            
+            it = properties.find("dampedSpringStiffness");
+            float   stiffness = it != properties.end() ? it->second.asFloat() : 1.0f;
+            stiffness *= 1000.0f;
+            
+            it = properties.find("dampedSpringDamping");
+            float   damping = it != properties.end() ? it->second.asFloat() : 4.0f;
+            damping *= 100.0f;
+            
+            CCBPhysicsJointRotarySpring * rotarySpringJoint = CCBPhysicsJointRotarySpring::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), stiffness, damping);
+            rotarySpringJoint->setRestAngle(restAngle);
+            
+            
+            rotarySpringJoint->setMaxForce(maxForce);
+            rotarySpringJoint->setBreakingForce(breakingForce);
+            rotarySpringJoint->setCollisionEnable(collideBodies);
+            nodeBodyA->getPhysicsBody()->getWorld()->addJoint(rotarySpringJoint);
+        }
+        
+        it2 = properties.find("dampedSpringEnabled");
+        if (it2 != properties.end() && it2->second.asBool()) {
+            ValueMap::iterator it = properties.find("limitMax");
+            
+            float   limitMax = it != properties.end() ? it->second.asFloat() : 90.0f;
+            limitMax = CC_DEGREES_TO_RADIANS(limitMax);
+            
+            it = properties.find("limitMin");
+            float   limitMin = it != properties.end() ? it->second.asFloat() : 0;
+            limitMin = CC_DEGREES_TO_RADIANS(limitMin);
+            
+            CCBPhysicsJointRotaryLimit * limitJoint = CCBPhysicsJointRotaryLimit::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), limitMin, limitMax);
+            
+            limitJoint->setMaxForce(maxForce);
+            limitJoint->setBreakingForce(breakingForce);
+            limitJoint->setCollisionEnable(collideBodies);
+            nodeBodyA->getPhysicsBody()->getWorld()->addJoint(limitJoint);
+        }
+        
+        it2 = properties.find("dampedSpringEnabled");
+        if (it2 != properties.end() && it2->second.asBool()) {
+            ValueMap::iterator it = properties.find("ratchetValue");
+            
+            float ratchetValue = it != properties.end() ? it->second.asFloat() : 30.0f;
+            ratchetValue = CC_DEGREES_TO_RADIANS(ratchetValue);
+            
+            it = properties.find("ratchetPhase");
+            float ratchetPhase = it != properties.end() ? it->second.asFloat() : 0.0f;
+            ratchetPhase = CC_DEGREES_TO_RADIANS(ratchetPhase);
+            
+            
+            CCBPhysicsJointRatchet * ratchetJoint = CCBPhysicsJointRatchet::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), ratchetPhase, ratchetValue);
+            
+            
+            ratchetJoint->setMaxForce(maxForce);
+            ratchetJoint->setBreakingForce(breakingForce);
+            ratchetJoint->setCollisionEnable(collideBodies);
+            nodeBodyA->getPhysicsBody()->getWorld()->addJoint(ratchetJoint);
+
+        }
+        
+
+        ValueMap point = properties["anchorA"].asValueMap();
+        Point anchorA = Point(point["x"].asFloat(), point["y"].asFloat()) + nodeBodyA->getPosition() + offsetA;
+        
+        joint = PhysicsJointPin::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), (anchorA) / getPTMRatio());
+        //return;
+    }
+    else if(className == "CCPhysicsSpringJoint")
+    {
+        
+        ValueMap point = properties["anchorA"].asValueMap();
+        Point anchorA = Point(point["x"].asFloat(), point["y"].asFloat()) + offsetA;
+
+        point = properties["anchorB"].asValueMap();
+        Point anchorB = Point(point["x"].asFloat(), point["y"].asFloat()) + offsetB;
+        
+        Point anchoAWorldPos = nodeBodyA->convertToWorldSpace(anchorA);
+        Point anchoBWorldPos = nodeBodyB->convertToWorldSpace(anchorB);
+        
+        float distance = anchoAWorldPos.getDistance(anchoBWorldPos);
+        
+        bool    restLengthEnabled = properties["restLengthEnabled"].asBool();
+        
+        float   restLength = restLengthEnabled ? properties["restLength"].asFloat() : distance;
+        float   stiffness = properties["stiffness"].asFloat();
+        float   damping = properties["damping"].asFloat();
+        
+        CCBPhysicsJointSpring* jointSpring = CCBPhysicsJointSpring::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), anchorA / getPTMRatio(), anchorB / getPTMRatio(), stiffness, damping);
+        jointSpring->setRestLength(restLength / getPTMRatio());
+        
+        joint = jointSpring;
+
+    }
+    else if(className == "CCPhysicsPinJoint")
+    {
+        
+        ValueMap point = properties["anchorA"].asValueMap();
+        Point anchorA = Point(point["x"].asFloat(), point["y"].asFloat()) + offsetA;
+        
+        point = properties["anchorB"].asValueMap();
+        Point anchorB = Point(point["x"].asFloat(), point["y"].asFloat()) + offsetB;
+        
+        bool minEnabled = properties["minDistanceEnabled"].asBool();
+        bool maxEnabled = properties["maxDistanceEnabled"].asBool();
+        
+        Point anchoAWorldPos = nodeBodyA->convertToWorldSpace(anchorA);
+        Point anchoBWorldPos = nodeBodyB->convertToWorldSpace(anchorB);
+        
+        float distance = anchoAWorldPos.getDistance(anchoBWorldPos);
+        
+        float minDistance = minEnabled ? properties["minDistance"].asFloat() : distance;
+        float maxDistance = maxEnabled ? properties["maxDistance"].asFloat() : distance;
+        
+        if(maxEnabled || minEnabled)
+        {
+
+            CCBPhysicsJointDistance* jointDistance = CCBPhysicsJointDistance::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), anchorA / getPTMRatio(), anchorB / getPTMRatio(), minDistance / getPTMRatio(), maxDistance / getPTMRatio());
+
+            joint = jointDistance;
+
+        }
+        else
+        {
+            
+            joint = CCBPhysicsJointDistance::construct(nodeBodyA->getPhysicsBody(), nodeBodyB->getPhysicsBody(), anchorA / getPTMRatio(), anchorB / getPTMRatio());
+        }
+    }
+    else
+    {
+        return;
+    }
+
+    joint->setMaxForce(maxForce);
+    joint->setCollisionEnable(collideBodies);
+
+    std::vector<cpConstraint*>& physicsJoints = ((HackPhysicsJoint*)joint)->getPhysicsJointInfo()->getJoints();
+
+    if (!physicsJoints.empty()) {
+        std::vector<cpConstraint*>::iterator it = physicsJoints.end() - 1;
+    
+        cpConstraint* constraint = *it;
+        constraint->data = joint;
+        cpConstraintSetPostSolveFunc(constraint, breakingForce < INFINITY ? BreakConstraint : NULL);
+    }
+    
+    ExternalJointsInfo* externalJoint = dynamic_cast<ExternalJointsInfo*>(joint);
+    if (externalJoint) {
+        externalJoint->setBreakingForce(breakingForce);
+//        printf("set breaking force: %f - %f\n", externalJoint->getBreakingForce(), breakingForce);
+    }
+    
+    PhysicsBody* body = nodeBodyA->getPhysicsBody();
+    PhysicsWorld* world = body->getWorld();
+    CCASSERT(world, "This node is not added to PhysicNode!");
+    nodeBodyA->getPhysicsBody()->getWorld()->addJoint(joint);
+    
+
+}
+
+
+static inline unsigned int readVariableLengthIntFromArray(const uint8_t* buffer, uint32_t * value) {
+    const uint8_t* ptr = buffer;
+    uint32_t b;
+    uint32_t result;
+        
+    b = *(ptr++); result  = (b & 0x7F)      ; if (!(b & 0x80)) goto done;
+    b = *(ptr++); result |= (b & 0x7F) <<  7; if (!(b & 0x80)) goto done;
+    b = *(ptr++); result |= (b & 0x7F) << 14; if (!(b & 0x80)) goto done;
+    b = *(ptr++); result |= (b & 0x7F) << 21; if (!(b & 0x80)) goto done;
+    b = *(ptr++); result |=  b         << 28; if (!(b & 0x80)) goto done;
+        
+done:
+    *value = result;
+    return ptr - buffer;
+}
+    
+int CCBReader::readIntWithSign(bool pSigned)
+{
+    unsigned int value = 0;
+    this->_currentByte += readVariableLengthIntFromArray(this->_bytes + this->_currentByte, &value);
+        
+    int num = 0;
+        
+    if (pSigned)
+    {
+        if (value & 0x1)
+            num = -(int)((value+1) >> 1);
+        else
+            num = (int)(value >> 1);
+        
+    } else
+    {
+        num = (int)value;
+    }
+        
+    return num;
+}
 
 bool CCBReader::readStringCache() {
-    int numStrings = this->readInt(false);
+    int numStrings = readIntWithSign(false);
 
     for(int i = 0; i < numStrings; i++) {
         this->_stringCache.push_back(this->readUTF8());
@@ -521,7 +913,7 @@ float CCBReader::readFloat()
         case FloatType::_05:
             return 0.5f;
         case FloatType::INTEGER:
-            return (float)this->readInt(true);
+            return (float)this->readIntWithSign(true);
         default:
             {
                 /* using a memcpy since the compiler isn't
@@ -551,9 +943,26 @@ float CCBReader::readFloat()
 
 std::string CCBReader::readCachedString()
 {
-    int n = this->readInt(false);
+    int n = this->readIntWithSign(false);
     return this->_stringCache[n];
 }
+    int convertStringToMask(std::string& str) {
+        int length = str.length();
+        
+        if (length == 0)
+            return 0xFFFFFFFF;
+        
+        int mask = 0;
+        for (int i = length - 1; i >= 0; i--) {
+            char ch = str[i];
+            if (ch == ';') continue;
+            if (ch == ' ') continue;
+            if (ch != '0')
+                mask |= 1 << (length - i - 1);
+        }
+        
+        return mask;
+    }
 
 Node * CCBReader::readNodeGraph(Node * pParent)
 {
@@ -568,7 +977,7 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     }
     
     // Read assignment type and name
-    TargetType memberVarAssignmentType = static_cast<TargetType>(this->readInt(false));
+    TargetType memberVarAssignmentType = static_cast<TargetType>(this->readIntWithSign(false));
     std::string memberVarAssignmentName;
     if(memberVarAssignmentType != TargetType::NONE)
     {
@@ -576,7 +985,7 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     }
     
     NodeLoader *ccNodeLoader = this->_nodeLoaderLibrary->getNodeLoader(className.c_str());
-     
+
     if (! ccNodeLoader)
     {
         log("no corresponding node loader for %s", className.c_str());
@@ -601,13 +1010,13 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     std::unordered_map<int, Map<std::string, CCBSequenceProperty*>> seqs;
     _animatedProps = new set<string>();
     
-    int numSequence = readInt(false);
+    int numSequence = readIntWithSign(false);
     for (int i = 0; i < numSequence; ++i)
     {
-        int seqId = readInt(false);
+        int seqId = readIntWithSign(false);
         Map<std::string, CCBSequenceProperty*> seqNodeProps;
         
-        int numProps = readInt(false);
+        int numProps = readIntWithSign(false);
         
         for (int j = 0; j < numProps; ++j)
         {
@@ -615,10 +1024,10 @@ Node * CCBReader::readNodeGraph(Node * pParent)
             seqProp->autorelease();
             
             seqProp->setName(readCachedString().c_str());
-            seqProp->setType(readInt(false));
+            seqProp->setType(readIntWithSign(false));
             _animatedProps->insert(seqProp->getName());
             
-            int numKeyframes = readInt(false);
+            int numKeyframes = readIntWithSign(false);
             
             for (int k = 0; k < numKeyframes; ++k)
             {
@@ -639,10 +1048,15 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     }
     
     
-    
+    // Read properties
+    int uuid = readIntWithSign(false);
+    if(uuid != 0x0)
+    {
+        setNodeRef(uuid, node);
+    }
     // Read properties
     ccNodeLoader->parseProperties(node, pParent, this);
-    
+
     bool isCCBFileNode = (nullptr == dynamic_cast<CCBFile*>(node)) ? false : true;
     // Handle sub ccb files (remove middle node)
     if (isCCBFileNode)
@@ -760,47 +1174,75 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     {
 
         // Read body shape
-        int bodyShape = this->readInt(false);
+        int bodyShape = this->readIntWithSign(false);
 		float cornerRadius = this->readFloat() / getPTMRatio();
 
         float offsetX = node->getAnchorPoint().x * node->getContentSize().width;
         float offsetY = node->getAnchorPoint().y * node->getContentSize().height;
         
         CCBPhysicsBody* body = CCBPhysicsBody::create();
-        int numPoints = this->readInt(false);
+        
 
         float shapeArea = 0;
         if (bodyShape == 0)
         {
 
-                Point* points = new Point[sizeof(Point)*numPoints];
-                for (int j = 0; j < numPoints; j++)
-                {
-                    float x = this->readFloat();
-                    float y = this->readFloat();
+                int numPolygons = this->readIntWithSign(false);
             
-                    points[j] = Point((x - offsetX) / getPTMRatio(), (y - offsetY) / getPTMRatio());
-                }
-            
-                if (numPoints == 3) //Nguyen Thai Duong: Fix wrong vertices order triangle
+                //Read Shapes from binary
+                typedef struct
                 {
-                    cpVect* vecs = new cpVect[numPoints];
-                    PhysicsHelper::points2cpvs(points, vecs, numPoints);
+                    Point * polygon;
+                    int numPoints;
+                } PolygonPtr;
+            
+                PolygonPtr * polygons = (PolygonPtr*)malloc(sizeof(PolygonPtr)*numPolygons);
+            
+                for(int j = 0; j < numPolygons; j++)
+                {
+                    // Read points
+                    int numPoints = readIntWithSign(false);
+                    Point* points = (Point*)malloc(sizeof(Point)*numPoints);
+                    for (int i = 0; i < numPoints; i++)
+                    {
+                        float x = readFloat();
+                        float y = readFloat();
                     
-                    if (!cpPolyValidate(vecs, numPoints)) { //swap
-                        Point temp = points[0];
-                        points[0] = points[1];
-                        points[1] = temp;
+                        points[numPoints - i - 1] = Point((x - offsetX) / getPTMRatio(), (y - offsetY) / getPTMRatio());
                     }
-                    
-                    CC_SAFE_DELETE_ARRAY(vecs);
+                
+                    if (numPoints == 3) //Nguyen Thai Duong: Fix wrong vertices order triangle
+                    {
+                        cpVect* vecs = new cpVect[numPoints];
+                        PhysicsHelper::points2cpvs(points, vecs, numPoints);
+                        
+                        if (!cpPolyValidate(vecs, numPoints)) { //swap
+                            Point temp = points[0];
+                            points[0] = points[1];
+                            points[1] = temp;
+                        }
+                        
+                        CC_SAFE_DELETE_ARRAY(vecs);
+                    }
+
+                    polygons[j].polygon = points;
+                    polygons[j].numPoints = numPoints;
+                
                 }
             
-                PhysicsShapePolygon* shape = PhysicsShapePolygon::create(points, numPoints);
-                body->addShape(shape);
-                shapeArea += shape->getArea();
-                delete []points;
+                for (int i = 0; i < numPolygons; i++) {
+                    PhysicsShape* shape = PhysicsShapePolygon::create(polygons[i].polygon, polygons[i].numPoints);
+                    //cornerRadius //cannot apply
+                    body->addShape(shape);
+                }
+
+                for (int i=0; i < numPolygons; i++)
+                {
+                    free(polygons[i].polygon);
+                }
             
+            free(polygons);
+           
           
         }
         else if (bodyShape == 1)
@@ -832,8 +1274,15 @@ Node * CCBReader::readNodeGraph(Node * pParent)
             body->setRotationEnable(allowsRotation);
         }
 
-       
-        body->setCollisionBitmask(0xFFFFFFFF);
+        std::string collisionType = this->readCachedString();
+        std::string collisionCategories = this->readCachedString();
+        std::string collisionMask = this->readCachedString();
+
+        //DuongNT: set mask here
+        
+        body->setCollisionBitmask(convertStringToMask(collisionMask));
+        body->setCategoryBitmask(convertStringToMask(collisionCategories));
+        body->setContactTestBitmask(convertStringToMask(collisionCategories));
         for (auto& shape : body->getShapes())
         {
             shape->setDensity(density);
@@ -848,7 +1297,7 @@ Node * CCBReader::readNodeGraph(Node * pParent)
     
     
     /* Read and add children. */
-    int numChildren = this->readInt(false);
+    int numChildren = this->readIntWithSign(false);
     for(int i = 0; i < numChildren; i++)
     {
         Node * child = this->readNodeGraph(node);
@@ -881,7 +1330,7 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
     
     keyframe->setTime(readFloat());
     
-    CCBKeyframe::EasingType easingType = static_cast<CCBKeyframe::EasingType>(readInt(false));
+    CCBKeyframe::EasingType easingType = static_cast<CCBKeyframe::EasingType>(readIntWithSign(false));
     float easingOpt = 0;
     Value value;
     
@@ -942,35 +1391,35 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
         //std::string spriteSheet = readCachedString();
         
         SpriteFrame* spriteFrame;
-        
+
         //if (spriteSheet.length() == 0)
         {
             spriteFile = _CCBRootPath + spriteFile;
-            
+
             Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(spriteFile.c_str());
             Rect bounds = Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height);
             
             spriteFrame = SpriteFrame::createWithTexture(texture, bounds);
         }
         /*
-         else
-         {
-         spriteSheet = _CCBRootPath + spriteSheet;
-         SpriteFrameCache* frameCache = SpriteFrameCache::getInstance();
-         
-         // Load the sprite sheet only if it is not loaded
-         if (_loadedSpriteSheets.find(spriteSheet) == _loadedSpriteSheets.end())
-         {
-         frameCache->addSpriteFramesWithFile(spriteSheet.c_str());
-         _loadedSpriteSheets.insert(spriteSheet);
-         }
-         
-         spriteFrame = frameCache->getSpriteFrameByName(spriteFile.c_str());
-         }
-         */
-
-        
+        else
+        {
+            spriteSheet = _CCBRootPath + spriteSheet;
+            SpriteFrameCache* frameCache = SpriteFrameCache::getInstance();
+            
+            // Load the sprite sheet only if it is not loaded            
+            if (_loadedSpriteSheets.find(spriteSheet) == _loadedSpriteSheets.end())
+            {
+                frameCache->addSpriteFramesWithFile(spriteSheet.c_str());
+                _loadedSpriteSheets.insert(spriteSheet);
+            }
+            
+            spriteFrame = frameCache->getSpriteFrameByName(spriteFile.c_str());
+        }
+        */
         keyframe->setObject(spriteFrame);
+    } else {
+        CCASSERT(false, "Unknown keyframe type!");
     }
     
     if (!value.isNull())
@@ -982,7 +1431,7 @@ CCBKeyframe* CCBReader::readKeyframe(PropertyType type)
 
 bool CCBReader::readCallbackKeyframesForSeq(CCBSequence* seq)
 {
-    int numKeyframes = readInt(false);
+    int numKeyframes = readIntWithSign(false);
     if(!numKeyframes) return true;
     
     CCBSequenceProperty* channel = new CCBSequenceProperty();
@@ -993,7 +1442,7 @@ bool CCBReader::readCallbackKeyframesForSeq(CCBSequence* seq)
         float time = readFloat();
         std::string callbackName = readCachedString();
       
-        int callbackType = readInt(false);
+        int callbackType = readIntWithSign(false);
       
         ValueVector valueVector;
         valueVector.push_back(Value(callbackName));
@@ -1021,7 +1470,7 @@ bool CCBReader::readCallbackKeyframesForSeq(CCBSequence* seq)
 }
 
 bool CCBReader::readSoundKeyframesForSeq(CCBSequence* seq) {
-    int numKeyframes = readInt(false);
+    int numKeyframes = readIntWithSign(false);
     if(!numKeyframes) return true;
     
     CCBSequenceProperty* channel = new CCBSequenceProperty();
@@ -1062,8 +1511,9 @@ bool CCBReader::readSequences()
 {
     auto& sequences = _animationManager->getSequences();
     
-    int numSeqs = readInt(false);
-
+    int numSeqs = readIntWithSign(false);//readInt(false);
+    bool hasPhysicsBodies = readBool();
+    bool hasPhysicsNodes  = readBool();
     
     for (int i = 0; i < numSeqs; i++)
     {
@@ -1072,8 +1522,8 @@ bool CCBReader::readSequences()
         
         seq->setDuration(readFloat());
         seq->setName(readCachedString().c_str());
-        seq->setSequenceId(readInt(false));
-        seq->setChainedSequenceId(readInt(true));
+        seq->setSequenceId(readIntWithSign(false));
+        seq->setChainedSequenceId(readIntWithSign(true));
         
         if(!readCallbackKeyframesForSeq(seq)) return false;
         if(!readSoundKeyframesForSeq(seq)) return false;
@@ -1081,7 +1531,8 @@ bool CCBReader::readSequences()
         sequences.pushBack(seq);
     }
     
-    _animationManager->setAutoPlaySequenceId(readInt(true));
+    _animationManager->setAutoPlaySequenceId(readIntWithSign(true));
+
 
     //DuongNT
     //    animationManager.fixedTimestep = hasPhysicsBodies || hasPhysicsNodes;
@@ -1236,5 +1687,16 @@ void CCBReader::setResolutionScale(float scale)
 {
     __ccbResolutionScale = scale;
 }
-
+    
+void CCBReader::setNodeRef(int uuid, cocos2d::Node* node) {
+    m_oNodeMap[uuid] = node;
+}
+    
+Node* CCBReader::getNodeByRef(int uuid) {
+    std::map<int, Node*>::iterator it = m_oNodeMap.find(uuid);
+    if (it != m_oNodeMap.end())
+        return it->second;
+    else
+        return NULL;
+}
 };
