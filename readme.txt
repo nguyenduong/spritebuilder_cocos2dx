@@ -21,6 +21,8 @@ III. Android:
      LOCAL_WHOLE_STATIC_LIBRARIES += cocos_extension_static
      $(call import-module,editor-support/spritebuilder)
 
+IV. Thanks
+  1. Beckheng Lam (beckheng@gmail.com)
 
 Please let me know if you have any problem.
 
