@@ -946,23 +946,32 @@ std::string CCBReader::readCachedString()
     int n = this->readIntWithSign(false);
     return this->_stringCache[n];
 }
-    int convertStringToMask(std::string& str) {
-        int length = str.length();
+    
+int convertStringToMask(const std::string& str, int defaultValue = 0xFFFFFFFF) {
+    int length = str.length();
         
-        if (length == 0)
-            return 0xFFFFFFFF;
+    if (length == 0)
+        return defaultValue;
         
-        int mask = 0;
-        for (int i = length - 1; i >= 0; i--) {
-            char ch = str[i];
-            if (ch == ';') continue;
-            if (ch == ' ') continue;
-            if (ch != '0')
-                mask |= 1 << (length - i - 1);
+    int mask = 0;
+    int val = 0;
+    for (int i = 0; i < length; i++) {
+        char ch = str[i];
+        if (ch >= '0' && ch <= '9') {
+            val = val * 10 + ch - '0';
+
         }
-        
-        return mask;
+        if (ch == ';' || i == length - 1) {
+            if (val > 32)
+                val = 32;
+            
+            mask |= 1 << (val - 1);
+            val = 0;
+        }
     }
+        
+    return mask;
+}
 
 Node * CCBReader::readNodeGraph(Node * pParent)
 {
@@ -1278,11 +1287,21 @@ Node * CCBReader::readNodeGraph(Node * pParent)
         std::string collisionCategories = this->readCachedString();
         std::string collisionMask = this->readCachedString();
 
+        /*
         //DuongNT: set mask here
         
         body->setCollisionBitmask(convertStringToMask(collisionMask));
         body->setCategoryBitmask(convertStringToMask(collisionCategories));
-        body->setContactTestBitmask(convertStringToMask(collisionCategories));
+        body->setContactTestBitmask(convertStringToMask(collisionType));
+        */
+   
+        //Beckheng Lam suggested
+        body->setCategoryBitmask(convertStringToMask(collisionType));
+        body->setContactTestBitmask(convertStringToMask(collisionCategories, 0x00000000));
+        body->setCollisionBitmask(convertStringToMask(collisionMask));
+        
+       
+        //int m = convertStringToMask("3;16;1");
         for (auto& shape : body->getShapes())
         {
             shape->setDensity(density);

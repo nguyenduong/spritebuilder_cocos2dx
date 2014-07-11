@@ -9,6 +9,14 @@
 #include "CCBSequence.h"
 #include "extensions/GUI/CCControlExtension/CCControl.h"
 
+#define CREATE_SPRITEBUILDER_LOADER_CLASS(LOADER_CLASS_NAME, UI_CLASS_NAME) \
+class LOADER_CLASS_NAME : public spritebuilder::LayerLoader { \
+    public: \
+    SB_STATIC_NEW_AUTORELEASE_OBJECT_METHOD(LOADER_CLASS_NAME, loader); \
+    protected: \
+    SB_VIRTUAL_NEW_AUTORELEASE_CREATECCNODE_METHOD(UI_CLASS_NAME); \
+};
+
 #define SB_STATIC_NEW_AUTORELEASE_OBJECT_METHOD(T, METHOD) static T * METHOD() { \
     T * ptr = new T(); \
     if(ptr != NULL) { \
