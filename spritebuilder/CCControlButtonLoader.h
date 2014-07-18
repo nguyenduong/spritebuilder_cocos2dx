@@ -37,6 +37,7 @@ class ControlButtonLoader : public ControlLoader {
         virtual void onHandlePropTypePosition(cocos2d::Node * pNode,cocos2d:: Node * pParent, const char* pPropertyName, cocos2d::Point pPosition, CCBReader * ccbReader);
         virtual void onDone(cocos2d::Node * pNode, cocos2d::Node * pParent, CCBReader * ccbReader);
     
+        virtual void onHandlePropTypeIntegerLabeled(cocos2d::Node * pNode, cocos2d::Node * pParent, const char* pPropertyName, int pIntegerLabeled, CCBReader * ccbReader);
         void updateForState(cocos2d::Node * pNode, cocos2d::extension::Control::State state);
 protected:
     float   _outlineWidth;

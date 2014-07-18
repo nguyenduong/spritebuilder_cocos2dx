@@ -88,7 +88,7 @@ void LabelTTFLoader::onHandlePropTypeFontTTF(Node * pNode, Node * pParent, const
     } else {
         NodeLoader::onHandlePropTypeFontTTF(pNode, pParent, pPropertyName, pFontTTF, ccbReader);
     }
-}
+} 
 
 void LabelTTFLoader::onHandlePropTypeText(Node * pNode, Node * pParent, const char * pPropertyName, const char * pText, CCBReader * ccbReader) {
     if(strcmp(pPropertyName, PROPERTY_STRING) == 0) {

@@ -366,4 +366,14 @@ void ControlButtonLoader::onDone(cocos2d::Node * pNode, cocos2d::Node * pParent,
     updateForState(pNode, Control::State::DISABLED);
     
 }
+    
+void ControlButtonLoader::onHandlePropTypeIntegerLabeled(Node * pNode, Node * pParent, const char* pPropertyName, int pIntegerLabeled, CCBReader * ccbReader) {
+    if (strcmp(pPropertyName, "horizontalAlignment") == 0) {
+        
+    } else if (strcmp(pPropertyName, "verticalAlignment") == 0) {
+        
+    } else
+
+        NodeLoader::onHandlePropTypeIntegerLabeled(pNode, pParent, pPropertyName, pIntegerLabeled, ccbReader);
+}
 };

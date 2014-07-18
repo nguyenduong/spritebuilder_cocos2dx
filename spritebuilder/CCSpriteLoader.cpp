@@ -7,6 +7,7 @@ using namespace cocos2d;
 #define PROPERTY_COLOR "color"
 #define PROPERTY_OPACITY "opacity"
 #define PROPERTY_BLENDFUNC "blendFunc"
+#define PROPERTY_CONTENTSIZE "contentSize"
 
 namespace spritebuilder {
 
@@ -54,5 +55,5 @@ void SpriteLoader::onHandlePropTypeBlendFunc(Node * pNode, Node * pParent, const
         NodeLoader::onHandlePropTypeBlendFunc(pNode, pParent, pPropertyName, pBlendFunc, ccbReader);
     }
 }
-
+    
 }

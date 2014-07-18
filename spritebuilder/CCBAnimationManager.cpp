@@ -59,7 +59,7 @@ CCBAnimationManager::~CCBAnimationManager()
     
     setRootNode(nullptr);
     setDelegate(nullptr);
-    
+
     for (auto iter = _objects.begin(); iter != _objects.end(); ++iter)
     {
         for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); ++iter2)

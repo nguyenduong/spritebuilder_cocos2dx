@@ -150,12 +150,14 @@ namespace spritebuilder {
                     cpPolyShape* poly = (cpPolyShape*)subShape;
                     int num = poly->numVerts;
                     Point* seg = new Point[num];
-                    
+                   
                     PhysicsHelper::cpvs2points(poly->tVerts, seg, num);
+                    
                     for (int i = 0; i < num; i++) {
                         seg[i] = seg[i] * ptmRatio;
                     }
-                     _drawNode->drawPolygon(seg, num, fillColor, 1.0f, outlineColor);
+
+                    _drawNode->drawPolygon(seg, num, fillColor, 1.0f, outlineColor);
                     
                     delete[] seg;
                     break;
@@ -168,6 +170,7 @@ namespace spritebuilder {
     
     void CCBPhysicsDebugDraw::drawJoint(PhysicsJoint& joint)
     {
+        
         const Color4F lineColor(0.0f, 0.0f, 1.0f, 1.0f);
         const Color4F jointPointColor(0.0f, 1.0f, 0.0f, 1.0f);
         
@@ -187,6 +190,11 @@ namespace spritebuilder {
                 cpVect a = cpvadd(body_a->p, cpvrotate(subJoint->anchr1, body_a->rot));
                 cpVect b = cpvadd(body_b->p, cpvrotate(subJoint->anchr2, body_b->rot));
                 
+                a.x *= CCBReader::getPTMRatio();
+                a.y *= CCBReader::getPTMRatio();
+                b.x *= CCBReader::getPTMRatio();
+                b.y *= CCBReader::getPTMRatio();
+                
                 _drawNode->drawSegment(PhysicsHelper::cpv2point(a), PhysicsHelper::cpv2point(b), 1, lineColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(a), 2, jointPointColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(b), 2, jointPointColor);
@@ -196,7 +204,13 @@ namespace spritebuilder {
                 cpSlideJoint *subJoint = (cpSlideJoint *)constraint;
                 
                 cpVect a = cpvadd(body_a->p, cpvrotate(subJoint->anchr1, body_a->rot));
+                
                 cpVect b = cpvadd(body_b->p, cpvrotate(subJoint->anchr2, body_b->rot));
+                
+                a.x *= CCBReader::getPTMRatio();
+                a.y *= CCBReader::getPTMRatio();
+                b.x *= CCBReader::getPTMRatio();
+                b.y *= CCBReader::getPTMRatio();
                 
                 _drawNode->drawSegment(PhysicsHelper::cpv2point(a), PhysicsHelper::cpv2point(b), 1, lineColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(a), 2, jointPointColor);
@@ -209,6 +223,12 @@ namespace spritebuilder {
                 cpVect a = cpvadd(body_a->p, cpvrotate(subJoint->anchr1, body_a->rot));
                 cpVect b = cpvadd(body_b->p, cpvrotate(subJoint->anchr2, body_b->rot));
                 
+                
+                a.x *= CCBReader::getPTMRatio();
+                a.y *= CCBReader::getPTMRatio();
+                b.x *= CCBReader::getPTMRatio();
+                b.y *= CCBReader::getPTMRatio();
+                
                 _drawNode->drawDot(PhysicsHelper::cpv2point(a), 2, jointPointColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(b), 2, jointPointColor);
             }
@@ -220,6 +240,13 @@ namespace spritebuilder {
                 cpVect b = cpvadd(body_a->p, cpvrotate(subJoint->grv_b, body_a->rot));
                 cpVect c = cpvadd(body_b->p, cpvrotate(subJoint->anchr2, body_b->rot));
                 
+                a.x *= CCBReader::getPTMRatio();
+                a.y *= CCBReader::getPTMRatio();
+                b.x *= CCBReader::getPTMRatio();
+                b.y *= CCBReader::getPTMRatio();
+                c.x *= CCBReader::getPTMRatio();
+                c.y *= CCBReader::getPTMRatio();
+                
                 _drawNode->drawSegment(PhysicsHelper::cpv2point(a), PhysicsHelper::cpv2point(b), 1, lineColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(c), 2, jointPointColor);
             }
@@ -230,10 +257,16 @@ namespace spritebuilder {
                 cpVect a = cpvadd(body_a->p, cpvrotate(subJoint->anchr1, body_a->rot));
                 cpVect b = cpvadd(body_b->p, cpvrotate(subJoint->anchr2, body_b->rot));
                 
+                a.x *= CCBReader::getPTMRatio();
+                a.y *= CCBReader::getPTMRatio();
+                b.x *= CCBReader::getPTMRatio();
+                b.y *= CCBReader::getPTMRatio();
+                
                 _drawNode->drawSegment(PhysicsHelper::cpv2point(a), PhysicsHelper::cpv2point(b), 1, lineColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(a), 2, jointPointColor);
                 _drawNode->drawDot(PhysicsHelper::cpv2point(b), 2, jointPointColor);
             }
+            
         }
     }
     
