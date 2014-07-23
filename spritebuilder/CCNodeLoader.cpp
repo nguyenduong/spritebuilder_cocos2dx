@@ -68,7 +68,7 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
         else if (isExtraProp && pNode == ccbReader->getAnimationManager()->getRootNode())
         {
 
-            CCSet* extraPropsNames = (CCSet*)pNode->getUserData();
+            CCSet* extraPropsNames = (CCSet*)pNode->getUserObject();
             
             if (!extraPropsNames)
             {
