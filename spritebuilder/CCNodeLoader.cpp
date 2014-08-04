@@ -101,41 +101,6 @@ void NodeLoader::parseProperties(Node * pNode, Node * pParent, CCBReader * ccbRe
 //         }
 // #endif
         */
-        // Forward properties for sub ccb files
-        if (dynamic_cast<CCBFile*>(pNode) != NULL)
-        {
-            CCBFile *ccbNode = (CCBFile*)pNode;
-            if (ccbNode->getCCBFileNode() && isExtraProp)
-            {
-                pNode = ccbNode->getCCBFileNode();
-                
-                // Skip properties that doesn't have a value to override
-                __Array *extraPropsNames = (__Array*)pNode->getUserObject();
-                Ref* pObj = NULL;
-                bool bFound = false;
-                CCARRAY_FOREACH(extraPropsNames, pObj)
-                {
-                    __String* pStr = static_cast<__String*>(pObj);
-                    if (0 == pStr->compare(propertyName.c_str()))
-                    {
-                        bFound = true;
-                        break;
-                    }
-                }
-                setProp &= bFound;
-            }
-        }
-        else if (isExtraProp && pNode == ccbReader->getAnimationManager()->getRootNode())
-        {
-            __Array *extraPropsNames = static_cast<__Array*>(pNode->getUserObject());
-            if (! extraPropsNames)
-            {
-                extraPropsNames = Array::create();
-                pNode->setUserObject(extraPropsNames);
-            }
-            
-            extraPropsNames->addObject(String::create(propertyName));
-        }
 
         switch(type)
         {
