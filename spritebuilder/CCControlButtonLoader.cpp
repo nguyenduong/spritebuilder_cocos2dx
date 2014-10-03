@@ -57,9 +57,10 @@ private:
 public:
     static SpriteBuilderButtonControl* create() {
         SpriteBuilderButtonControl *ret = new SpriteBuilderButtonControl();
-        if (ret->init())
+        if (ret->init()) {
+            ret->autorelease();
             return ret;
-        else
+        } else
             return nullptr;
     }
     void setMaxSize(Size& size) {
