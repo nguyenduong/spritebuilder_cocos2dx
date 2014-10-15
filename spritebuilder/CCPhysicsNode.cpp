@@ -34,6 +34,7 @@ PhysicsNode* PhysicsNode::create() {
     PhysicsNode* ret = new PhysicsNode();
     
     if (ret->initWithPhysics()) {
+        ret->autorelease();
         return ret;
     }
     return NULL;

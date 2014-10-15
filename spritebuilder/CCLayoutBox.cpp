@@ -32,9 +32,10 @@ static float roundUpToEven(float f)
 
 LayoutBox* LayoutBox::create() {
     LayoutBox* ret = new LayoutBox();
-    if (ret->init())
+    if (ret->init()) {
+        ret->autorelease();
         return ret;
-    else
+    } else
         return NULL;
 }
 LayoutBox::LayoutBox() {
