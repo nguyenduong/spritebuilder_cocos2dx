@@ -399,7 +399,7 @@ private:
     void alignBits();
 
     bool init();
-    inline int readIntWithSign(bool pSigned);
+    int readIntWithSign(bool pSigned);
     friend class NodeLoader;
     
     void readPropertyPosition(const std::string& propertyName, cocos2d::ValueMap& map);
